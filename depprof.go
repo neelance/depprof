@@ -13,13 +13,14 @@ import (
 
 type handler struct {
 	filterPrefix string
-	deps         map[[2]string]struct{}
-	depsMutex    sync.Mutex
+
+	depsMutex sync.Mutex
+	deps      map[[2]string]struct{}
 }
 
 func NewHandler(filterPrefix string) http.Handler {
 	h := &handler{
-		filterPrefix: filterPrefix,
+		filterPrefix: strings.TrimRight(filterPrefix, "/") + "/",
 		deps:         make(map[[2]string]struct{}),
 	}
 	go h.recordLoop()
