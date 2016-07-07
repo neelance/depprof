@@ -31,41 +31,36 @@ var deps = make(map[[2]string]struct{})
 var depsMutex sync.Mutex
 
 func (h *handler) recordLoop() {
-	for {
-		h.recordStacks()
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func (h *handler) recordStacks() {
 	var p []runtime.StackRecord
-	n, _ := runtime.GoroutineProfile(nil)
+	var n int
 	for {
-		p = make([]runtime.StackRecord, n+10)
-		n2, ok := runtime.GoroutineProfile(p)
-		if ok {
-			p = p[:n2]
-			break
-		}
-		n = n2 // try again
-	}
-
-	h.depsMutex.Lock()
-	defer h.depsMutex.Unlock()
-
-	for _, sr := range p {
-		prevPkg := ""
-		for _, pc := range sr.Stack() {
-			file, _ := runtime.FuncForPC(pc).FileLine(pc)
-			pkg, ok := fileToPkg(file)
-			if !ok || !strings.HasPrefix(pkg, h.filterPrefix) {
-				continue
+		for {
+			var ok bool
+			n, ok = runtime.GoroutineProfile(p)
+			if ok {
+				break
 			}
-			if prevPkg != "" && pkg != prevPkg {
-				h.deps[[2]string{pkg, prevPkg}] = struct{}{}
-			}
-			prevPkg = pkg
+			p = make([]runtime.StackRecord, n+10)
 		}
+
+		h.depsMutex.Lock()
+		for _, sr := range p[:n] {
+			prevPkg := ""
+			for _, pc := range sr.Stack() {
+				file, _ := runtime.FuncForPC(pc).FileLine(pc)
+				pkg, ok := fileToPkg(file)
+				if !ok || !strings.HasPrefix(pkg, h.filterPrefix) {
+					continue
+				}
+				if prevPkg != "" && pkg != prevPkg {
+					h.deps[[2]string{pkg, prevPkg}] = struct{}{}
+				}
+				prevPkg = pkg
+			}
+		}
+		h.depsMutex.Unlock()
+
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
