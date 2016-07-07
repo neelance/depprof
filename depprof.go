@@ -26,10 +26,6 @@ func NewHandler(filterPrefix string) http.Handler {
 	return h
 }
 
-var filterPrefix = "sourcegraph.com/sourcegraph/sourcegraph/"
-var deps = make(map[[2]string]struct{})
-var depsMutex sync.Mutex
-
 func (h *handler) recordLoop() {
 	var p []runtime.StackRecord
 	var n int
